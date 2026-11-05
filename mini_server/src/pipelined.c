@@ -6,6 +6,7 @@
 
 #include "../includes/net_util.h"
 #include "../includes/protocol.h"
+#include "../includes/run_registry.h"
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
@@ -18,7 +19,6 @@
 #include <semaphore.h>
 #define DEFAULT_PORT 8080
 #define LISTEN_BACKLOG 64
-#define DRAIN_SECONDS 1
 
 static volatile sig_atomic_t g_running = 1;
 
@@ -95,7 +95,7 @@ static int install_signal_handlers(void)
     }
 
     memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = on_sigint;
+    sa.sa_handler = SIG_IGN;
 
     if (sigaction(SIGPIPE, &sa, NULL) < 0)
     {
@@ -106,91 +106,88 @@ static int install_signal_handlers(void)
     return 0;
 }
 
+void h_submit(int fd, cmd_t* cmd, char* response, size_t response_size) {
 
-// void* dispatch() {
-//     job_t* job;
-
-//     while ((job = pc_queue_pop(&jobs_queue)) != NULL) {
-//         if (is_closing()) {
-//             pthread_mutex_lock(&jobs->mutex);
-//             job->estado = JOB_ERROR;
-//             snprintf(job->motivo, sizeof job->motivo, "servidor cerrando");
-//             pthread_mutex_unlock(&jobs->mutex);
-//             continue;
-//         }
-//         pthread_mutex_lock(&jobs->mutex);
-//         job->estado = JOB_RUNNING;
-//         pthread_mutex_unlock(&jobs->mutex);
-//         read_write_lock_write(&published_status.lock);
-//         published_status.job_id = job->id;
-//         published_status.total = job->pasos;
-//         published_status.nx = job->nx;
-//         published_status.ny = job->ny;
-//         published_status.paso = 0;
-//         published_status.snap_paso = 0;
-//         published_status.exists_snap = 0;
-//         // todo: comprobar el malloc
-//         published_status.snap = malloc(published_status.nx * published_status.ny * sizeof(double));
-//         read_write_unlock_write(&published_status.lock);
-
-//         malla_t malla;
-//         malla_init(&malla, job->nx, job->ny);
-
-//         struct timespec t0, t1;
-//         double es = 0.0, barreras = 0.0;
-//         clock_gettime(CLOCK_MONOTONIC, &t0);
-//         fdtd_bench(&malla, job->nx, job->ny, job->pasos, job->hilos, job->k, job->sx,
-//             job->sy, &barreras, &es, &snapshots_queue, job->id, &published_status);
-//         clock_gettime(CLOCK_MONOTONIC, &t1);
-//         double seg = (double)(t1.tv_sec - t0.tv_sec) + (double)(t1.tv_nsec - t0.tv_nsec) / 1e9;
-
-//         pthread_mutex_lock(&jobs->mutex);
-//         job->segundos = seg;
-//         job->estado = JOB_DONE;
-//         job->suma_abs_ez = suma_abs_ez(&malla);
-//         if (job->k != 0) {
-//             snprintf(job->archivo, sizeof job->archivo, "job%d_step%d.bin", job->id, job->pasos - (job->pasos % job->k)); 
-//         }
-//         pthread_mutex_unlock(&jobs->mutex);
-
-//         read_write_lock_write(&published_status.lock);
-//         published_status.job_id = -1;
-//         published_status.exists_snap = 0;
-//         free(published_status.snap);
-//         published_status.snap = NULL;
-//         read_write_unlock_write(&published_status.lock);
-
-//         malla_destroy(&malla);
-//     }
-//     return NULL;
-// }
-
-void h_submit(cmd_t* cmd, char* response, size_t response_size) {
-    (void)cmd;
     if (is_closing()) { 
         snprintf(response, response_size, "ERROR servidor cerrando\n");
         return;
     }
-    snprintf(response, response_size, "ERROR no implementado\n");
+
+   char* end = NULL;
+   long size = strtol(cmd->args[0], &end, 10);
+
+   if(*end != '\0' || size < 1){
+
+    snprintf(response, response_size, "ERROR tamaño invalido\n");
+    return;
+
+   }
+
+    char* yaml = malloc((size_t)size + 1);
+
+    if (yaml == NULL) {
+        snprintf(response, response_size, "ERROR sin memoria\n");
+        return;
+    }
+
+     if (nu_read_all(fd, yaml, (size_t)size) < 0) {
+        free(yaml);
+        snprintf(response, response_size, "ERROR archivo YAML incompleto\n");
+        return;
+    }
+    yaml[size] = '\0';
+
+    int id = run_add(yaml);
+    if(id < 0){
+        free(yaml);
+        snprintf(response, response_size, "ERROR registro lleno\n");
+        return;
+
+    }
+    snprintf(response, response_size, "OK %d\n", id);
 }
 
 void h_status(cmd_t* cmd, char* response, size_t response_size) {
-    (void)cmd;
+    
+    int id = (int)strtol(cmd->args[0], NULL, 10);
+
+    if(run_status(id, response, response_size) < 0){
+    snprintf(response, response_size, "ERROR id desconocido\n");
+
+    }
 
     if (is_closing()) {
         snprintf(response, response_size, "ERROR servidor cerrando\n");
         return;
     }
-    snprintf(response, response_size, "ERROR no implementado\n");
     
 }
-
 
 
 void h_shutdown(char* response, size_t response_size) {
     request_shutdown();
     snprintf(response, response_size, "BYE\n");
 }
+
+void h_logs(cmd_t* cmd, char* response, size_t response_size){
+  (void)cmd;
+  snprintf(response, response_size, "ERROR no implementado\n");
+}
+
+static void h_cancel(cmd_t* cmd, char* response, size_t response_size) {
+
+    int id = (int)strtol(cmd->args[0], NULL, 10);
+    if (run_cancel(id) < 0)
+        snprintf(response, response_size, "ERROR id desconocido\n");
+    else
+        snprintf(response, response_size, "OK %d canceled\n", id);
+}
+
+static void h_list(cmd_t* cmd, char* response, size_t response_size) {
+    (void)cmd;
+    snprintf(response, response_size, "ERROR no implementado\n");
+}
+
 
 static void *handle_connection(void *arg) {
     connection_t *conn = arg;
@@ -203,9 +200,12 @@ static void *handle_connection(void *arg) {
         cmd_t cmd;
         parse_command(linea, &cmd);
         switch (cmd.tipo) {
-            case CMD_SUBMIT: h_submit(&cmd, response, sizeof response); break;
+            case CMD_SUBMIT: h_submit(conn->file_descriptor, &cmd, response, sizeof response); break;
             case CMD_STATUS: h_status(&cmd, response, sizeof response); break;
             case CMD_SHUTDOWN: h_shutdown(response, sizeof response); break;
+            case CMD_LOGS: h_logs(&cmd, response, sizeof response); break;
+            case CMD_CANCEL: h_cancel(&cmd, response, sizeof response); break;
+            case CMD_LIST: h_list(&cmd, response, sizeof response); break;
             default:
                 snprintf(response,  sizeof response, "ERROR %s\n", cmd.error);
         }
@@ -342,6 +342,7 @@ int main(int argc, char** argv) {
 
 
     wait_handlers();
+    run_registry_destroy();
     sem_destroy(&handlers_zero);
 
     return EXIT_SUCCESS;

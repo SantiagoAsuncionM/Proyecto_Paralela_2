@@ -68,6 +68,24 @@ int nu_write_all(int file_descriptor, const void* buffer, size_t size)
     return 0;
 }
 
+int nu_read_all(int fd, char* buf, size_t n)
+{
+    size_t bytes_read = 0;
+
+    while (bytes_read < n) {
+        ssize_t r = read(fd, buf + bytes_read, n - bytes_read);
+        if (r < 0) {
+            if (errno == EINTR)
+                continue;      
+            return -1;         // error 
+        }
+        if (r == 0)
+            return -1;     
+        bytes_read += (size_t)r;
+    }
+    return 0;
+}
+
 ssize_t nu_drain_request(int file_descriptor)
 {
     char buffer[2048];
