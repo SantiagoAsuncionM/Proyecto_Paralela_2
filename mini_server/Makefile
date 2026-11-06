@@ -14,4 +14,4 @@ bin/pipectl: src/pipectl.c
 clean:
 	rm -rf bin
 
-.PHONY: all cleans
+.PHONY: all clean

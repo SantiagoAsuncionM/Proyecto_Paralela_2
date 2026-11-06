@@ -4,7 +4,7 @@ typedef enum { CMD_SUBMIT, CMD_STATUS, CMD_LOGS, CMD_CANCEL, CMD_LIST, CMD_SHUTD
 
 typedef struct {
     cmd_type_t tipo;
-    char args[3][128];
+    char args[3][256];
     int  argc;
     char error[64];
 } cmd_t;

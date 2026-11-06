@@ -106,44 +106,37 @@ static int install_signal_handlers(void)
     return 0;
 }
 
-void h_submit(int fd, cmd_t* cmd, char* response, size_t response_size) {
+void h_submit(cmd_t* cmd, char* response, size_t response_size) {
 
     if (is_closing()) { 
         snprintf(response, response_size, "ERROR servidor cerrando\n");
         return;
     }
 
-   char* end = NULL;
-   long size = strtol(cmd->args[0], &end, 10);
+ 
+    //si no se encuentra el archivo
+    if(access(cmd->args[0], R_OK) != 0){
 
-   if(*end != '\0' || size < 1){
+        snprintf(response, response_size, "ERROR no existe el archivo '%s'\n", cmd->args[0]);
+        return;
 
-    snprintf(response, response_size, "ERROR tamaño invalido\n");
-    return;
+    }  
 
-   }
-
-    char* yaml = malloc((size_t)size + 1);
-
-    if (yaml == NULL) {
+    char* file_name = strdup(cmd->args[0]); //yamls/file.yaml
+    if (file_name == NULL) {
         snprintf(response, response_size, "ERROR sin memoria\n");
         return;
     }
 
-     if (nu_read_all(fd, yaml, (size_t)size) < 0) {
-        free(yaml);
-        snprintf(response, response_size, "ERROR archivo YAML incompleto\n");
-        return;
-    }
-    yaml[size] = '\0';
-
-    int id = run_add(yaml);
-    if(id < 0){
-        free(yaml);
+    int id = run_add(file_name);
+    if(id<0){
+        free(file_name);
         snprintf(response, response_size, "ERROR registro lleno\n");
         return;
 
     }
+
+
     snprintf(response, response_size, "OK %d\n", id);
 }
 
@@ -185,14 +178,14 @@ static void h_cancel(cmd_t* cmd, char* response, size_t response_size) {
 
 static void h_list(cmd_t* cmd, char* response, size_t response_size) {
     (void)cmd;
-    snprintf(response, response_size, "ERROR no implementado\n");
+    run_list(response, response_size);
 }
 
 
 static void *handle_connection(void *arg) {
     connection_t *conn = arg;
     char linea[512];
-    char response[256] = {0};
+    char response[1024] = {0};
 
     if (nu_read_line(conn->file_descriptor, linea, sizeof linea) < 0){
         snprintf(response, sizeof response, "ERROR linea invalida\n");
@@ -200,7 +193,7 @@ static void *handle_connection(void *arg) {
         cmd_t cmd;
         parse_command(linea, &cmd);
         switch (cmd.tipo) {
-            case CMD_SUBMIT: h_submit(conn->file_descriptor, &cmd, response, sizeof response); break;
+            case CMD_SUBMIT: h_submit(&cmd, response, sizeof response); break;
             case CMD_STATUS: h_status(&cmd, response, sizeof response); break;
             case CMD_SHUTDOWN: h_shutdown(response, sizeof response); break;
             case CMD_LOGS: h_logs(&cmd, response, sizeof response); break;
@@ -242,7 +235,6 @@ static int parse_parameters(int argc, char** argv){
   }
   
   
-  printf("Todo bien\n");
   return 0;
 
 }

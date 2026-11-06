@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_RUNS 100
+#define MAX_RUNS 1000
 
 run_t runs[MAX_RUNS];
 int total_runs = 0;
@@ -24,6 +24,7 @@ run_t* search_Run(int id) {
 //guarda una run
 int run_add(char* yaml) {
     pthread_mutex_lock(&mutex);
+
     if (total_runs == MAX_RUNS) {
         pthread_mutex_unlock(&mutex);
         return -1;
@@ -50,10 +51,37 @@ int run_status(int id, char* buf, size_t cap) {
     return 0;
 }
 
-int run_list(char* buf, size_t cap) {
-    if (total_runs == 0)
-        snprintf(buf, cap, "sin ejecuciones\n");
-    return 0;
+int run_list(char* buf, size_t cap){
+    pthread_mutex_lock(&mutex);
+    if (total_runs == 0){
+
+        snprintf(buf, cap, "Sin ejecuciones registradas\n");
+        pthread_mutex_unlock(&mutex);
+        return 0;
+
+    }
+    else{
+
+        size_t regs_printed = 0;
+
+        for(int i=1; i<=total_runs; i++){
+
+           run_t* actual_run = search_Run(i);
+
+           if(actual_run != NULL && regs_printed < cap){
+
+            int n = snprintf(buf + regs_printed, cap - regs_printed, "OK %d %s\n", actual_run->id, actual_run->status);
+
+             if (n > 0){
+                 regs_printed +=  (size_t)n;
+             }     
+           }
+
+        }
+        pthread_mutex_unlock(&mutex);
+        return 0;
+    }    
+    
 }
 
 int run_cancel(int id) {
