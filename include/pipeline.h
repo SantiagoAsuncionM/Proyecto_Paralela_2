@@ -1,3 +1,4 @@
+#pragma once
 #include <stdbool.h>
 #include "array.h"
 
@@ -28,6 +29,7 @@ typedef struct {
     char* artifact;
     char* publish_path;
     char* download_path;
+    int line;
 } step_t;
 
 typedef struct {
@@ -36,6 +38,7 @@ typedef struct {
     condition_t condition;
     double timeout_in_seconds;
     array_t* steps;
+    int line;
 } job_t;
 
 typedef struct {
@@ -44,6 +47,7 @@ typedef struct {
     array_t* depends_on;
     condition_t condition;
     bool has_depends_on; 
+    int line;
 } stage_t;
 
 typedef struct {
