@@ -1,14 +1,14 @@
-#define _POSIX_C_SOURCE 200809L
 #include "ready_queue.h"
 
 #include <stdlib.h>
-#include <time.h>
+
 
 void ready_queue_init(ready_queue_t *queue) {
     queue->head = NULL;
     queue->tail = NULL;
     queue->closed = false;
-    omp_init_lock(&queue->lock);
+    pthread_mutex_init(&queue->mutex, NULL);
+    pthread_cond_init(&queue->not_empty, NULL);
 }
 
 void ready_queue_destroy(ready_queue_t *queue) {
@@ -20,7 +20,8 @@ void ready_queue_destroy(ready_queue_t *queue) {
     }
     queue->head = NULL;
     queue->tail = NULL;
-    omp_destroy_lock(&queue->lock);
+    pthread_cond_destroy(&queue->not_empty);
+    pthread_mutex_destroy(&queue->mutex);
 }
 
 bool ready_queue_push(ready_queue_t *queue, void *job) {
@@ -29,46 +30,42 @@ bool ready_queue_push(ready_queue_t *queue, void *job) {
     node->job = job;
     node->next = NULL;
 
-    omp_set_lock(&queue->lock);
+    pthread_mutex_lock(&queue->mutex);
     if (queue->closed) {
-        omp_unset_lock(&queue->lock);
+        pthread_mutex_unlock(&queue->mutex);
         free(node);
         return false;
     }
     if (queue->tail != NULL) queue->tail->next = node;
     else queue->head = node;
     queue->tail = node;
-    omp_unset_lock(&queue->lock);
+    pthread_cond_signal(&queue->not_empty);  // wake one waiting agent
+    pthread_mutex_unlock(&queue->mutex);
     return true;
 }
 
-// An empty queue is polled every 1 ms (OpenMP has no condition variables).
 void *ready_queue_pop(ready_queue_t *queue) {
-    while (true) {
-        omp_set_lock(&queue->lock);
-        if (queue->closed) {
-            omp_unset_lock(&queue->lock);
-            return NULL;
-        }
-        ready_node_t *node = queue->head;
-        if (node != NULL) {
-            queue->head = node->next;
-            if (queue->head == NULL) queue->tail = NULL;
-        }
-        omp_unset_lock(&queue->lock);
+    pthread_mutex_lock(&queue->mutex);
+    while (queue->head == NULL && !queue->closed)
+        pthread_cond_wait(&queue->not_empty, &queue->mutex);  // sleeps until signal
 
-        if (node != NULL) {
-            void *job = node->job;
-            free(node);
-            return job;
-        }
-        struct timespec pause = { 0, 1000 * 1000 };  // 1 ms
-        nanosleep(&pause, NULL);
+    if (queue->closed) {
+        pthread_mutex_unlock(&queue->mutex);
+        return NULL;
     }
+    ready_node_t *node = queue->head;
+    queue->head = node->next;
+    if (queue->head == NULL) queue->tail = NULL;
+    pthread_mutex_unlock(&queue->mutex);
+
+    void *job = node->job;
+    free(node);
+    return job;
 }
 
 void ready_queue_close(ready_queue_t *queue) {
-    omp_set_lock(&queue->lock);
+    pthread_mutex_lock(&queue->mutex);
     queue->closed = true;
-    omp_unset_lock(&queue->lock);
+    pthread_cond_broadcast(&queue->not_empty);  // wake all waiting agents
+    pthread_mutex_unlock(&queue->mutex);
 }

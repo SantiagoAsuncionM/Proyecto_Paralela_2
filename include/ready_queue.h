@@ -2,7 +2,7 @@
 
 // Ready Queue: Queue of jobs ready to run
 
-#include <omp.h>
+#include <pthread.h>
 #include <stdbool.h>
 
 typedef struct ready_node {
@@ -13,7 +13,8 @@ typedef struct ready_node {
 typedef struct {
     ready_node_t *head, *tail;
     bool          closed;  // true after shutdown
-    omp_lock_t    lock;
+    pthread_mutex_t mutex;
+    pthread_cond_t  not_empty;  // signaled when a job arrives or queue closes
 } ready_queue_t;
 
 void ready_queue_init(ready_queue_t *queue);
