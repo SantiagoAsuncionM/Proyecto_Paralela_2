@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "tasks.h"
-
+#include "vars.h"
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -162,7 +162,7 @@ static task_result_t task_cpu(const array_t *inputs, task_context_t *context) {
     snprintf(text, sizeof text, "%" PRIu64, value);
     log_line(context, "CPU_RESULT=%s", text);
 
-    // TODO: save CPU_RESULT in context->vars
+    if (context->vars != NULL) vars_set(context->vars, "CPU_RESULT", text);
 
     return TASK_OK;
 }
