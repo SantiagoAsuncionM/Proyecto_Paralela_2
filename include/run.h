@@ -1,11 +1,15 @@
 #pragma once
 
+// Run: one execution of a pipeline (one submit).
+
 #include <omp.h>
 #include <sys/types.h>
 #include <time.h>
 
 #include "array.h"
 #include "pipeline.h"
+#include "graph.h"
+// #include "joblog.h"  // TODO: joblog
 
 //Possible states for steps, jobs, stages and runs
 typedef enum {
@@ -24,22 +28,34 @@ typedef struct {
     struct timespec t_start, t_end;
 } step_exec_t;
 
-//Job node been executed
-typedef struct job_node {
-    const job_t    *def;          //YAML definition
-    int             stage;        //Stage index
+// Execution data of one job.
+typedef struct {
+    struct run   *run;    // job run
+    job_node_t   *node;   // job graph node
+    exec_state_t  state;
+    step_exec_t  *steps;  // one per step
+    // job_log_t     log;  // TODO: joblog
+} job_exec_t;
 
-    int            *pred;         //Predecessors: Indexes of jobs this job depends on
-    int             n_pred;       //predecessor jobs count
-    int            *succ;         //Succesors: Indexes of jobs that depends on this job
-    int             n_succ;       //Succesor jobs count  
+typedef struct run {
+    int              id;               
+    char            *workdir;          // work dir path
+    pipeline_t      *def;              // parsed pipeline
+    dep_graph_t     *graph;            // dependencies graph 
 
-    int             pending;      //Predecessors pending count
-    exec_state_t    state;        //Job current state  
-    struct timespec t_start, t_end;
+    job_exec_t      *jobs;             // jobs exec data
+    int              n_jobs;
 
-    step_exec_t    *steps;        //One per step
-    job_log_t       log;          //Job log
-    array_t        *out_vars;     //Variables set when job ended
-    pid_t           current_pid;  //Child process ID running, 0 if none
-} job_node_t;
+    int              remaining;        // jobs not finished yet
+    int              cancel_requested; // 1 = canceled (omp atomic)
+    exec_state_t     state;
+    struct timespec  t_start, t_end;
+
+    omp_lock_t       lock;             // protects states and times (read by status)
+} run_t;
+
+// Creates the run from a pipeline and its graph. NULL if out of memory.
+run_t *run_create(pipeline_t *pipeline, dep_graph_t *graph);
+
+// Frees the run and its graph.
+void run_destroy(run_t *run);
