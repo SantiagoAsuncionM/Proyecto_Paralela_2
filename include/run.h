@@ -9,7 +9,7 @@
 #include "array.h"
 #include "pipeline.h"
 #include "graph.h"
-// #include "joblog.h"  // TODO: joblog
+#include "joblog.h" 
 
 //Possible states for steps, jobs, stages and runs
 typedef enum {
@@ -34,7 +34,7 @@ typedef struct {
     job_node_t   *node;   // job graph node
     exec_state_t  state;
     step_exec_t  *steps;  // one per step
-    // job_log_t     log;  // TODO: joblog
+    job_log_t     log;  // joblog
 } job_exec_t;
 
 typedef struct run {

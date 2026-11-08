@@ -10,12 +10,12 @@ void add_error(array_t* errors, int line, const char* fmt, ...) {
     va_start(ap, fmt);
     vsnprintf(msg, sizeof msg, fmt, ap);
     va_end(ap);
-    snprintf(full, sizeof full, "línea %zu: %s", line, msg);
+    snprintf(full, sizeof full, "línea %d: %s", line, msg);
     array_add(errors, strdup(full));
 }
 
 stage_t* find_stage(pipeline_t* pipeline, const char* name) {
-    for (int i = 0; i < pipeline->stages->num_items; i++) {
+    for (size_t i = 0; i < pipeline->stages->num_items; i++) {
         stage_t* s = pipeline->stages->items[i];
         if (s->name && strcmp(s->name, name) == 0) return s;
     }
@@ -23,7 +23,7 @@ stage_t* find_stage(pipeline_t* pipeline, const char* name) {
 }
 
 job_t* find_job(stage_t* s, const char* name) {
-    for (int i = 0; i < s->jobs->num_items; i++) {
+    for (size_t i = 0; i < s->jobs->num_items; i++) {
         job_t* j = s->jobs->items[i];
         if (j->name && strcmp(j->name, name) == 0) return j;
     }
@@ -31,7 +31,7 @@ job_t* find_job(stage_t* s, const char* name) {
 }
 
 void validate_names_and_refs(pipeline_t* pipeline, array_t* errors) {
-    for (int i = 0; i < pipeline->stages->num_items; i++) {
+    for (size_t i = 0; i < pipeline->stages->num_items; i++) {
         stage_t* stage = pipeline->stages->items[i];
         if (!stage->name) continue;
 
@@ -42,7 +42,7 @@ void validate_names_and_refs(pipeline_t* pipeline, array_t* errors) {
         }
 
         if (stage->depends_on) {
-            for (int d = 0; d < stage->depends_on->num_items; d++) {
+            for (size_t d = 0; d < stage->depends_on->num_items; d++) {
                 const char* dn = stage->depends_on->items[d];
                 if (strcmp(dn, stage->name) == 0) {
                     add_error(errors, stage->line, "la etapa '%s' no puede depender de ella misma", dn);
@@ -54,7 +54,7 @@ void validate_names_and_refs(pipeline_t* pipeline, array_t* errors) {
             }
         }
 
-        for (int k = 0; k < stage->jobs->num_items; k++) {
+        for (size_t k = 0; k < stage->jobs->num_items; k++) {
             job_t* job = stage->jobs->items[k];
             if (!job->name) continue;
 
@@ -65,7 +65,7 @@ void validate_names_and_refs(pipeline_t* pipeline, array_t* errors) {
                     job->name, stage->name, job_first->line);
             }
 
-            for (int d = 0; d < job->depends_on->num_items; d++) {
+            for (size_t d = 0; d < job->depends_on->num_items; d++) {
                 const char* dn = job->depends_on->items[d];
                 if (strcmp(dn, job->name) == 0) {
                     add_error(errors, job->line, "el trabajo '%s' no puede depender de %s", dn, job->name);

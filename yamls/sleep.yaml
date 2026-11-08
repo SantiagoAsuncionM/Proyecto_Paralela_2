@@ -1,0 +1,15 @@
+name: prueba-sleep
+stages:
+  - stage: unic
+    jobs:
+      - job: a
+        steps:
+          - task: Sleep@1
+            inputs:
+              seconds: 5
+      - job: b
+        dependsOn: a
+        steps:
+          - task: Sleep@1
+            inputs:
+              seconds: 2

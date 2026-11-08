@@ -7,7 +7,7 @@
 
 #include "array.h"
 #include "pipeline.h"
-//#include "joblog.h"
+#include "joblog.h"
 
 // Task context passed to each task by the job executor
 typedef struct {
@@ -15,8 +15,7 @@ typedef struct {
     const int      *cancel;    // 1 = canceled (read with omp atomic read)
     struct timespec deadline;  // CLOCK_MONOTONIC, {0,0} = no limit
     array_t        *vars;      // job variables
-    // TODO: need joblog unit
-    // job_log_t *log;          // job log
+    job_log_t *log;          // job log
 } task_context_t;
 
 typedef enum {
