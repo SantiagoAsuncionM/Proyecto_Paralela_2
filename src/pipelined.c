@@ -4,9 +4,15 @@
 //
 #define _POSIX_C_SOURCE 200809L
 
-#include "../includes/net_util.h"
-#include "../includes/protocol.h"
-#include "../includes/run_registry.h"
+#include "net_util.h"
+#include "protocol.h"
+#include "run_registry.h"
+#include "parser.h"
+#include "validate_pipeline.h"
+#include "graph.h"
+#include "graph.h"
+#include "scheduler.h"
+#include "executor.h"
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
@@ -17,6 +23,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <time.h>
 #define DEFAULT_PORT 8080
 #define LISTEN_BACKLOG 64
 
@@ -30,6 +37,8 @@ static pthread_mutex_t g_closing_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int active_handlers = 0;
 static pthread_mutex_t handlers_mutex = PTHREAD_MUTEX_INITIALIZER;
 static sem_t handlers_zero;
+static scheduler_t scheduler;
+static const char* work_directory = NULL;
 
 static int is_closing(void) {
     pthread_mutex_lock(&g_closing_mutex);
@@ -106,6 +115,30 @@ static int install_signal_handlers(void)
     return 0;
 }
 
+void show_errors(array_t* errors, char* response, size_t response_size){
+  
+    size_t used = (size_t)snprintf(response, response_size, "ERROR %zu\n" , errors->num_items);
+
+    for(size_t i =0; i<errors->num_items && used<response_size; i++){
+
+      int n = snprintf(response + used, response_size-used, "%s\n", (char*)errors->items[i]);
+
+      if(n<0){
+        break;
+      }
+
+      used += (size_t)n;
+
+    }
+
+
+
+}
+
+
+
+
+
 void h_submit(cmd_t* cmd, char* response, size_t response_size) {
 
     if (is_closing()) { 
@@ -119,23 +152,65 @@ void h_submit(cmd_t* cmd, char* response, size_t response_size) {
 
         snprintf(response, response_size, "ERROR no existe el archivo '%s'\n", cmd->args[0]);
         return;
-
     }  
 
-    char* file_name = strdup(cmd->args[0]); //yamls/file.yaml
-    if (file_name == NULL) {
-        snprintf(response, response_size, "ERROR sin memoria\n");
+    //leero el archivo y crear la lista de errores
+    array_t* errors = NULL;
+    pipeline_t* pipeline = load_pipeline(cmd->args[0], &errors);
+
+    if(pipeline != NULL){
+        validate_names_and_refs(pipeline, errors);
+    }
+
+    //crear el grafo
+    dep_graph_t* graph = NULL;
+
+    if(pipeline != NULL && errors->num_items == 0){
+
+        graph = graph_build(pipeline);
+        if(graph != NULL){
+            graph_check_cycles(graph, errors);
+        }
+
+
+    }
+
+    //si algo fallo
+    if(pipeline == NULL || graph == NULL || errors->num_items > 0){
+        
+        if(errors->num_items > 0){
+            show_errors(errors, response, response_size);
+        }
+        else{
+
+          snprintf(response, response_size, "ERROR al procesar el archivo\n");
+          graph_destroy(graph);
+          array_destroy(errors);  
+          return;
+        }
+    }
+
+    //crear la run 
+    run_t* run = run_create(pipeline, graph);
+    if(run == NULL){
+        graph_destroy(graph);
+        snprintf(response, response_size, "ERROR, sin memoira\n");
         return;
     }
 
-    int id = run_add(file_name);
-    if(id<0){
-        free(file_name);
-        snprintf(response, response_size, "ERROR registro lleno\n");
-        return;
-
+    int id = run_add(run);
+    if(id < 0){
+       run_destroy(run);
+       snprintf(response, response_size, "ERROR, registro sin espacio\n");
+       return;
     }
 
+    char run_directory[1024];
+    snprintf(run_directory, sizeof run_directory, "%s/run_%d", work_directory, id);
+    if (!executor_submit_run(&scheduler, run, run_directory)) {
+        snprintf(response, response_size, "ERROR al iniciar la ejecucion %d\n", id);
+        return;
+    }
 
     snprintf(response, response_size, "OK %d\n", id);
 }
@@ -162,9 +237,83 @@ void h_shutdown(char* response, size_t response_size) {
     snprintf(response, response_size, "BYE\n");
 }
 
-void h_logs(cmd_t* cmd, char* response, size_t response_size){
-  (void)cmd;
-  snprintf(response, response_size, "ERROR no implementado\n");
+// Sin FOLLOW manda la bitacora que hay en ese momento
+// Con FOLLOW se queda mandando las lineas nuevas hasta que termine
+void h_logs(int fd, cmd_t* cmd, char* response, size_t response_size){
+  
+    int id = (int)strtol(cmd->args[0], NULL, 10);
+
+    const char* job = NULL;
+    bool FOLLOW = false;
+
+    for(int i=1; i<cmd->argc; i++){
+        if(strcmp(cmd->args[i], "FOLLOW") == 0){
+            FOLLOW = true;
+        }
+        else{
+            job = cmd->args[i];
+        }
+    }
+
+
+    //si en ningun lado del input viene follow
+    if(FOLLOW == false){
+     int result = run_logs(id, job, response, response_size);
+     if (result == -1) {
+         snprintf(response, response_size, "ERROR id desconocido\n");
+     }  else if (result == -2) {
+         snprintf(response, response_size, "ERROR el trabajo '%s' no existe\n", job);
+     }
+     return;
+    }
+
+    //caso con follow: 
+    int count = run_job_count(id);
+
+    if(count <0){
+
+        snprintf(response, response_size, "ERROR, id desconocido\n");
+        return;
+    }
+
+    size_t* positions = calloc((size_t)count, sizeof(size_t));
+    if (positions == NULL) {
+        snprintf(response, response_size, "ERROR, sin memoria\n");
+        return;
+    }
+    
+    char new_lines[8192];
+
+    while(1){
+        bool finished = false;
+        int result = run_logs_follow(id, job, positions, new_lines, sizeof new_lines, &finished);
+
+        if(result == -2){
+            snprintf(response, response_size, "ERROR el trabajo '%s' no existe\n", job);
+            break;
+        }
+
+         if(result == -1){
+            snprintf(response, response_size, "ERROR el id no existe\n");
+            break;
+        }
+
+        if (new_lines[0] != '\0') {
+            if (nu_write_all(fd, new_lines, strlen(new_lines)) < 0) {
+                break;
+            }
+        }
+
+        //termina de imprimir si todos los trabajos terminaron o si el servidor se apaga
+        if (finished==true || is_closing()) {
+            break;
+        }
+
+
+    }
+
+    free(positions);
+
 }
 
 static void h_cancel(cmd_t* cmd, char* response, size_t response_size) {
@@ -196,7 +345,7 @@ static void *handle_connection(void *arg) {
             case CMD_SUBMIT: h_submit(&cmd, response, sizeof response); break;
             case CMD_STATUS: h_status(&cmd, response, sizeof response); break;
             case CMD_SHUTDOWN: h_shutdown(response, sizeof response); break;
-            case CMD_LOGS: h_logs(&cmd, response, sizeof response); break;
+            case CMD_LOGS: h_logs(conn->file_descriptor, &cmd, response, sizeof response); break;
             case CMD_CANCEL: h_cancel(&cmd, response, sizeof response); break;
             case CMD_LIST: h_list(&cmd, response, sizeof response); break;
             default:
@@ -271,8 +420,8 @@ int main(int argc, char** argv) {
     }
 
     unsigned short port = parse_port(argc, argv);
-    //int agents = atoi(argv[2]);
-    //const char* work_directory = argv[3];
+    int agents = atoi(argv[2]);
+    work_directory = argv[3];
     
     // semaforo que lleva control de los hilos manejadores
     sem_init(&handlers_zero, 0, 0);
@@ -285,8 +434,14 @@ int main(int argc, char** argv) {
 
     unsigned long accepted = 0;
 
+    //inicializar el scheduler
+    if(!scheduler_start(&scheduler, agents)){
+        fprintf(stderr, "ERROR al iniciar el scheduler\n");
+        return EXIT_FAILURE;
+    }
 
-    printf("listening on port %u — Ctrl-C to stop\n", port);
+
+    printf("listening on port %u, agents=%d, work directory=%s — Ctrl-C to stop\n", port, agents, work_directory);
     fflush(stdout);
     while (g_running && !is_closing()) {
 
@@ -334,6 +489,7 @@ int main(int argc, char** argv) {
 
 
     wait_handlers();
+    scheduler_shutdown(&scheduler);
     run_registry_destroy();
     sem_destroy(&handlers_zero);
 

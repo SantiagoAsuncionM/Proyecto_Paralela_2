@@ -5,7 +5,7 @@
 typedef struct {
     void** items;
     size_t num_items;
-    int capacity;
+    size_t capacity;
     // pthread_mutex_t mutex;
     int next_id;
 } array_t;

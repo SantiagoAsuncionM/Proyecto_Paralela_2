@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../includes/prod_con_queue.h"
+#include "prod_con_queue.h"
 
 int pc_queue_init(pc_queue_t* q, size_t capacity) {
     if (q == NULL || capacity == 0) {

@@ -20,18 +20,18 @@ bool add_edge(job_node_t* graph, int from, int to) {
 }
 
 int stage_index(const pipeline_t* pipe, const char* name) {
-    for (int i = 0; i < pipe->stages->num_items; i++) {
+    for (size_t i = 0; i < pipe->stages->num_items; i++) {
         if (strcmp(((stage_t*)pipe->stages->items[i])->name, name) == 0) {
-            return i;
+            return (int)i;
         } 
     }
     return -1;
 }
 
 int job_index(const stage_t* s, const char* name) {
-    for (int k = 0; k < s->jobs->num_items; k++) {
+    for (size_t k = 0; k < s->jobs->num_items; k++) {
         if (strcmp(((job_t*)s->jobs->items[k])->name, name) == 0) {
-            return k;
+            return (int)k;
         } 
     }
     return -1;
@@ -76,9 +76,9 @@ dep_graph_t* graph_build(const pipeline_t* pipe) {
 
     for (int i = 0; i < ns; i++) {
         stage_t* s = pipe->stages->items[i];
-        for (int k = 0; k < s->jobs->num_items; k++) {
-            nodes[base[i] + k].def   = s->jobs->items[k];
-            nodes[base[i] + k].stage = i;
+        for (size_t k = 0; k < s->jobs->num_items; k++) {
+            nodes[base[i] + (int)k].def   = s->jobs->items[k];
+            nodes[base[i] + (int)k].stage = i;
         }
     }
 
@@ -88,17 +88,17 @@ dep_graph_t* graph_build(const pipeline_t* pipe) {
         if (!s->has_depends_on) {
             if (i > 0) link_stages(nodes, base, i - 1, i);
         } else {
-            for (int d = 0; d < s->depends_on->num_items; d++) {
+            for (size_t d = 0; d < s->depends_on->num_items; d++) {
                 int from = stage_index(pipe, s->depends_on->items[d]);
                 if (from >= 0) link_stages(nodes, base, from, i);
             }
         }
 
-        for (int k = 0; k < s->jobs->num_items; k++) {
+        for (size_t k = 0; k < s->jobs->num_items; k++) {
             job_t* j = s->jobs->items[k];
-            for (int d = 0; d < j->depends_on->num_items; d++) {
+            for (size_t d = 0; d < j->depends_on->num_items; d++) {
                 int from = job_index(s, j->depends_on->items[d]);
-                if (from >= 0) add_edge(nodes, base[i] + from, base[i] + k);
+                if (from >= 0) add_edge(nodes, base[i] + from, base[i] + (int)k);
             }
         }
     }

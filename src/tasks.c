@@ -5,20 +5,31 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
+#include "joblog.h"
 #include <omp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 
 //*** HELPERS ***//
 
 // Writes a line to the job log.
-// TODO: need joblog unit
 static void log_line(task_context_t *context, const char *format, ...) {
-    (void)context;
-    (void)format;
+    
+    if(context == NULL || context->log == NULL){
+        return;
+    }
+
+    char text[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(text, sizeof text, format, args);
+    va_end(args);
+
+    joblog_append(context->log, text);
 }
 
 // Value of an input, or NULL if missing.

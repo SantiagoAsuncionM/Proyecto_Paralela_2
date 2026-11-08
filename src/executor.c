@@ -182,7 +182,7 @@ static void finish_run(run_t *run) {
 static void finish_job(scheduler_t *scheduler, job_exec_t *job, exec_state_t state) {
     run_t *run = job->run;
     if (job->node->out_vars == NULL) job->node->out_vars = initial_vars(run, job);  // skipped jobs pass variables on
-    // TODO: joblog_close(&job->log);
+    joblog_close(&job->log);
 
     omp_set_lock(&run->lock);
     job->state = state;
@@ -210,7 +210,15 @@ bool executor_submit_run(scheduler_t *scheduler, run_t *run, const char *workdir
     char path[PATH_MAX];
     snprintf(path, sizeof path, "%s/logs", workdir);
     if (run->workdir == NULL || !make_dirs(path)) return false;
-    // TODO: one log per job, joblog_init(&job->log, "<workdir>/logs/<stage>.<job>.log")
+
+
+    for(int i=0; i<run->n_jobs; i++){
+       
+        job_exec_t* job = &run->jobs[i];
+        char log_path[PATH_MAX];
+        snprintf(log_path, sizeof log_path,"%s/logs/%s.%s.log", workdir, stage_name(run,job), job->node->def->name);
+        joblog_open_file(&job->log, log_path);
+    }
 
     omp_set_lock(&run->lock);
     run->state = STATE_RUNNING;
@@ -257,7 +265,7 @@ void executor_run_job(scheduler_t *scheduler, void *job_pointer) {
         .workdir = workdir,
         .cancel = &run->cancel_requested,
         .vars = job->node->out_vars,
-        // .log = &job->log,  // TODO: joblog
+        .log = &job->log,  // TODO: joblog
     };
     if (job->node->def->timeout_in_seconds > 0) {
         now(&context.deadline);
@@ -275,8 +283,29 @@ void executor_run_job(scheduler_t *scheduler, void *job_pointer) {
             continue;
         }
         set_step_state(run, &job->steps[i], STATE_RUNNING, true);
+
+        char line[256];
+        snprintf(line, sizeof line, "paso %zu: inicio", i+1);
+        joblog_append(&job->log, line);
+
         task_result_t result = context.vars != NULL ? run_step(run, step, &context)
                                                     : TASK_FAILED;
+
+        const char* text;
+        if(result == TASK_OK){
+            text = "ok";
+
+        }
+        else if(result == TASK_CANCELED){
+            text = "cancelado";
+        }
+        else{
+            text = "fallo";
+        }                 
+        snprintf(line, sizeof line, "paso %zu: %s", i+1, text);
+        joblog_append(&job->log, line);
+        
+        
         if (result == TASK_CANCELED || result == TASK_TIMEOUT) stop = result;
         else if (result == TASK_FAILED && step->continue_on_error) partial = true;
         else if (result == TASK_FAILED) failed = true;

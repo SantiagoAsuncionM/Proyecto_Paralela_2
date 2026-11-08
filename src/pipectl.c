@@ -50,8 +50,9 @@ static int send_request(const struct sockaddr_in* server, const char* command,
     }
 
     size_t len = 0;
-    while (len < cap - 1) {
-        ssize_t n = recv(file_descriptor, resp + len, cap - 1 - len, 0);
+    char new_lines[1024];
+    while (1) {
+        ssize_t n = recv(file_descriptor, new_lines, sizeof new_lines, 0);
         if (n < 0) {
             if (errno == EINTR)
                 continue;
@@ -60,9 +61,14 @@ static int send_request(const struct sockaddr_in* server, const char* command,
         }
         if (n == 0)
             break;
-        len += (size_t)n;
-        if (memchr(resp, '\n', len) != NULL)
-            break;
+        
+        fwrite(new_lines, 1, (size_t)n, stdout);
+        fflush(stdout);
+        
+        for(ssize_t i =0; i<n && len <cap-1; i++){
+            resp[len] = new_lines[i];
+            len = len+1;
+        }
     }
     resp[len] = '\0';
     close(file_descriptor);
@@ -94,7 +100,6 @@ int main(int argc, char** argv) {
     if (send_request(&server, command, resp, sizeof resp) < 0)
         return EXIT_FAILURE;
 
-    printf("%s\n", resp);
 
     if (strncmp(resp, "ERROR", 5) == 0 || strncmp(resp, "BUSY", 4) == 0)
         return EXIT_FAILURE;
