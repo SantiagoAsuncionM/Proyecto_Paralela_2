@@ -20,7 +20,7 @@ void array_destroy(array_t* array) {
     if (array == NULL) {
         return;
     }
-    for (int i = 0; i < array->num_items; ++i) {
+    for (size_t i = 0; i < array->num_items; ++i) {
         free(array->items[i]);
     }
     free(array->items);
