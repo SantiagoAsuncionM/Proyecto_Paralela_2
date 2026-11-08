@@ -1,0 +1,29 @@
+name: prueba-validaciones
+stages:
+  - stage: compilar
+    jobs:
+      - job: build
+        steps:
+          - script: echo uno
+      - job: build
+        steps:
+          - script: echo dos
+      - job: test
+        dependsOn: inexistente
+        steps:
+          - script: echo tres
+      - job: solo
+        dependsOn: solo
+        steps:
+          - script: echo yo
+  - stage: compilar
+    jobs:
+      - job: otro
+        steps:
+          - script: echo otro
+  - stage: publicar
+    dependsOn: [compilar, desplegar]
+    jobs:
+      - job: pub
+        steps:
+          - script: echo pub

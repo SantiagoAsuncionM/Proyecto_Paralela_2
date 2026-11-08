@@ -55,3 +55,9 @@ typedef struct {
     array_t* variables;
     array_t* stages;
 } pipeline_t;
+
+void pairs_destroy(array_t* a);
+void step_clean(step_t* s);
+void job_clean(job_t* j);
+void stage_clean(stage_t* s);
+void pipeline_destroy(pipeline_t* p);

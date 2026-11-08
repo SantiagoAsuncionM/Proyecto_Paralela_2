@@ -1,0 +1,14 @@
+name: ciclo-etapas
+stages:
+  - stage: a
+    dependsOn: b
+    jobs:
+      - job: j1
+        steps:
+          - script: echo 1
+  - stage: b
+    dependsOn: a
+    jobs:
+      - job: j2
+        steps:
+          - script: echo 2
