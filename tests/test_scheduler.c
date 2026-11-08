@@ -52,6 +52,6 @@ int main(void) {
     test_start_and_shutdown();
     test_zero_agents();
     test_enqueue_after_shutdown();
-    printf("%d of %d pruebas pasaron\n", passed, total);
+    printf("%d de %d pruebas pasaron\n", passed, total);
     return passed == total ? 0 : 1;
 }
