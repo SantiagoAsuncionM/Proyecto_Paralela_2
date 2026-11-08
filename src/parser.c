@@ -148,9 +148,9 @@ pipeline_t* load_pipeline(const char* filename, array_t** errors) {
     yaml_parser_delete(&parser);
 
     fclose(file);
-    // if (c.errors->num_items > 0 && result) { 
-    //     pipeline_destroy(result); 
-    //     result = NULL; 
-    // }
+    if (ctx.errors->num_items > 0 && result) { 
+        pipeline_destroy(result); 
+        result = NULL; 
+    }
     return result;
 }

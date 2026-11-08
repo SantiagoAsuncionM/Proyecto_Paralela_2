@@ -48,6 +48,7 @@ void run_destroy(run_t *run) {
     free(run->jobs);
     free(run->workdir);
     graph_destroy(run->graph);
+    pipeline_destroy(run->def);
     omp_destroy_lock(&run->lock);
     free(run);
 }

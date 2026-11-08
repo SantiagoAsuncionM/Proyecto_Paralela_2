@@ -1,0 +1,16 @@
+name: ciclo-jobs
+stages:
+  - stage: a
+    jobs:
+      - job: x
+        dependsOn: y
+        steps:
+          - script: echo x
+      - job: y
+        dependsOn: z
+        steps:
+          - script: echo y
+      - job: z
+        dependsOn: x
+        steps:
+          - script: echo z

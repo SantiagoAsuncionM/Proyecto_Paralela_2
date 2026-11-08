@@ -135,10 +135,6 @@ void show_errors(array_t* errors, char* response, size_t response_size){
 
 }
 
-
-
-
-
 void h_submit(cmd_t* cmd, char* response, size_t response_size) {
 
     if (is_closing()) { 
@@ -186,8 +182,10 @@ void h_submit(cmd_t* cmd, char* response, size_t response_size) {
           snprintf(response, response_size, "ERROR al procesar el archivo\n");
         }
 
-         graph_destroy(graph);
-         array_destroy(errors);  
+        graph_destroy(graph);
+        array_destroy(errors);  
+        pipeline_destroy(pipeline);
+
         return;
     }
 
@@ -197,14 +195,17 @@ void h_submit(cmd_t* cmd, char* response, size_t response_size) {
     run_t* run = run_create(pipeline, graph);
     if(run == NULL){
         graph_destroy(graph);
+        array_destroy(errors);  
+        pipeline_destroy(pipeline);
         snprintf(response, response_size, "ERROR, sin memoira\n");
         return;
     }
 
     int id = run_add(run);
     if(id < 0){
-       run_destroy(run);
-       snprintf(response, response_size, "ERROR, registro sin espacio\n");
+        run_destroy(run);
+        array_destroy(errors);  
+        snprintf(response, response_size, "ERROR, registro sin espacio\n");
        return;
     }
 
@@ -212,9 +213,10 @@ void h_submit(cmd_t* cmd, char* response, size_t response_size) {
     snprintf(run_directory, sizeof run_directory, "%s/run_%d", work_directory, id);
     if (!executor_submit_run(&scheduler, run, run_directory)) {
         snprintf(response, response_size, "ERROR al iniciar la ejecucion %d\n", id);
+        run_destroy(run);
+        array_destroy(errors);  
         return;
     }
-
     snprintf(response, response_size, "OK %d\n", id);
 }
 

@@ -3,35 +3,32 @@
 #include <stdlib.h>
 
 array_t* array_init(int initial_capacity) {
-    array_t* array = malloc(sizeof(array_t));
-    if (array == NULL) {
-        return NULL;
-    }
-    array->items = malloc(sizeof(void*) * initial_capacity);
-    if (array->items == NULL) {
+    array_t* array = calloc(1, sizeof *array);
+    if (!array) return NULL;
+
+    array->items = calloc((size_t)initial_capacity, sizeof(void*));
+    if (!array->items) {
         free(array);
         return NULL;
     }
-    array->num_items = 0;
     array->capacity = initial_capacity;
     array->next_id = 1;
-    
-    for (int i = 0; i < initial_capacity; ++i) {
-        array->items[i] = NULL;
-    }
     return array;
 }
 
-void array_destroy(array_t* jobs) {
-    if (jobs == NULL) return;
-    for (size_t i = 0; i < jobs->num_items; ++i) {
-        free(jobs->items[i]);
+void array_destroy(array_t* array) {
+    if (array == NULL) {
+        return;
     }
-    free(jobs->items);
-    free(jobs);
+    for (size_t i = 0; i < array->num_items; ++i) {
+        free(array->items[i]);
+    }
+    free(array->items);
+    free(array);
 }
 
 int array_add(array_t* array, void* new_item) {
+    if (!array) return -1;
     if (array->num_items == array->capacity) {
         size_t new_cap = array->capacity * 2;
         void** p = realloc(array->items, (size_t)new_cap * sizeof *p);
@@ -44,13 +41,3 @@ int array_add(array_t* array, void* new_item) {
     array->items[array->num_items++] = new_item;
     return (int)array->num_items;
 }
-
-// job_t* jobs_search(jobs_array* jobs, long id) {
-//     job_t* j = NULL;
-//     pthread_mutex_lock(&jobs->mutex);
-//     if (id >= 1 && id <= jobs->num_jobs) {
-//         j = jobs->jobs[id - 1];
-//     }
-//     pthread_mutex_unlock(&jobs->mutex);
-//     return j;
-// }
