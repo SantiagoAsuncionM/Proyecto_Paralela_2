@@ -1,0 +1,31 @@
+name: valido
+variables:
+  N: 3
+stages:
+  - stage: primera
+    jobs:
+      - job: a
+        steps:
+          - script: echo $(N)
+      - job: b
+        dependsOn: []
+        steps:
+          - task: Sleep@1
+            inputs:
+              seconds: 1
+  - stage: segunda
+    dependsOn: []
+    jobs:
+      - job: c
+        dependsOn: []
+        condition: always()
+        timeoutInSeconds: 10
+        steps:
+          - script: echo hola
+            continueOnError: true
+  - stage: tercera
+    dependsOn: [primera, segunda]
+    jobs:
+      - job: d
+        steps:
+          - script: echo fin

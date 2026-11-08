@@ -1,0 +1,12 @@
+name: prueba-forma
+colorFavorito: azul
+stages:
+  - stage: unica
+    jobs:
+      - job: a
+        steps:
+          - script: echo hola
+            task: Sleep@1
+          - publish: salida.txt
+          - download: algo
+          - paso_raro: x
