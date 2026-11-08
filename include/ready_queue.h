@@ -28,5 +28,3 @@ void *ready_queue_pop(ready_queue_t *queue);
 
 // Closes the queue: waiting agents get NULL.
 void ready_queue_close(ready_queue_t *queue);
-
-// TODO: remove the jobs of a canceled run (needed for cancel <id>).
