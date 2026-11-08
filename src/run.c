@@ -17,6 +17,11 @@ run_t *run_create(pipeline_t *pipeline, dep_graph_t *graph) {
     run->state = STATE_QUEUED;
     omp_init_lock(&run->lock);
 
+
+    for (int i = 0; i < run->n_jobs; i++) {
+        joblog_init(&run->jobs[i].log);
+    }
+
     for (int i = 0; i < run->n_jobs; i++) {
         job_exec_t *job = &run->jobs[i];
         job->run = run;
@@ -38,7 +43,7 @@ void run_destroy(run_t *run) {
         job_exec_t *job = &run->jobs[i];
         free(job->steps);
         if (job->node != NULL) vars_free(job->node->out_vars);
-        // TODO: joblog_destroy(&job->log);
+        joblog_destroy(&job->log);
     }
     free(run->jobs);
     free(run->workdir);
