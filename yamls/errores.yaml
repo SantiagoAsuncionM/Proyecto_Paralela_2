@@ -1,0 +1,25 @@
+name: errores-de-parser
+
+stages:
+  - stage: preparar
+    jobs:
+      - job: a
+        steps:
+          - task: Sleep@1
+            inputs:
+              seconds: 1
+
+  - stage: preparar
+    jobs:
+      - job: b
+        timeout: 10
+        steps:
+          - task: Sleep@1
+            inputs:
+              seconds: 1
+
+  - stage: final
+    dependsOn: inexistente
+    jobs:
+      - job: c
+        condition: cuando_quiera()

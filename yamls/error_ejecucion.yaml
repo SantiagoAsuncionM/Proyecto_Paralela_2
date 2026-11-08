@@ -1,0 +1,47 @@
+name: errores-al-ejecutar
+
+stages:
+  - stage: fallos
+    jobs:
+      - job: archivo_inexistente
+        steps:
+          - task: WordCount@1
+            inputs:
+              file: no_existe.txt
+              threads: 2
+              output: salida.txt
+
+      - job: falta_output
+        steps:
+          - task: Histogram@1
+            inputs:
+              file: ../../../../datos/quijote.txt
+              bins: 16
+              threads: 2
+
+      - job: bins_invalidos
+        steps:
+          - task: Histogram@1
+            inputs:
+              file: ../../../../datos/quijote.txt
+              bins: 0
+              threads: 2
+              output: h.csv
+
+      - job: tarea_desconocida
+        steps:
+          - task: Magia@1
+            inputs:
+              poder: 9000
+
+      - job: tolerante
+        steps:
+          - task: WordCount@1
+            inputs:
+              file: no_existe.txt
+              threads: 2
+              output: x.txt
+            continueOnError: true
+          - task: Sleep@1
+            inputs:
+              seconds: 1

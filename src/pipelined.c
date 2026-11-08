@@ -176,20 +176,20 @@ void h_submit(cmd_t* cmd, char* response, size_t response_size) {
         
         if(errors->num_items > 0){
             show_errors(errors, response, response_size);
-            graph_destroy(graph);
-            array_destroy(errors);
-            pipeline_destroy(pipeline);
-            return;
         }
         else{
 
           snprintf(response, response_size, "ERROR al procesar el archivo\n");
-          graph_destroy(graph);
-          array_destroy(errors);  
-          pipeline_destroy(pipeline);
-          return;
         }
+
+        graph_destroy(graph);
+        array_destroy(errors);  
+        pipeline_destroy(pipeline);
+
+        return;
     }
+
+    array_destroy(errors);
 
     //crear la run 
     run_t* run = run_create(pipeline, graph);
@@ -217,7 +217,6 @@ void h_submit(cmd_t* cmd, char* response, size_t response_size) {
         array_destroy(errors);  
         return;
     }
-    array_destroy(errors);
     snprintf(response, response_size, "OK %d\n", id);
 }
 
@@ -495,7 +494,19 @@ int main(int argc, char** argv) {
 
 
     wait_handlers();
+
+    //cancela todas las runs
+    run_cancel_all();
+
+    //espera a que terminen todos los runs que quedaron pendientes
+    while(run_all_finished() == false){
+        sched_yield();
+    }
+
+    //apaga los agentes
     scheduler_shutdown(&scheduler);
+
+    //libera la memoria de los runs
     run_registry_destroy();
     sem_destroy(&handlers_zero);
 
