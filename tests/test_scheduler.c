@@ -21,19 +21,19 @@ static int passed = 0, total = 0;
 static void check(bool ok, const char *name) {
     total++;
     if (ok) passed++;
-    printf("%s  %s\n", ok ? "PASS" : "FAIL", name);
+    printf("%s  %s\n", ok ? "PASA" : "FALLA", name);
 }
 
 static void test_start_and_shutdown(void) {
     scheduler_t scheduler;
     bool ok = scheduler_start(&scheduler, 4);
     if (ok) scheduler_shutdown(&scheduler);
-    check(ok, "Starts with 4 agents and shuts down");
+    check(ok, "Arranca con 4 agentes y se apaga");
 }
 
 static void test_zero_agents(void) {
     scheduler_t scheduler;
-    check(!scheduler_start(&scheduler, 0), "Rejects 0 agents");
+    check(!scheduler_start(&scheduler, 0), "Rechaza 0 agentes");
 }
 
 static void test_enqueue_after_shutdown(void) {
@@ -45,13 +45,13 @@ static void test_enqueue_after_shutdown(void) {
         ok = !scheduler_enqueue(&scheduler, &job);
         scheduler_shutdown(&scheduler);
     }
-    check(ok, "After shutdown, enqueue fails");
+    check(ok, "Tras apagar, encolar falla");
 }
 
 int main(void) {
     test_start_and_shutdown();
     test_zero_agents();
     test_enqueue_after_shutdown();
-    printf("%d of %d tests passed\n", passed, total);
+    printf("%d of %d pruebas pasaron\n", passed, total);
     return passed == total ? 0 : 1;
 }

@@ -21,7 +21,7 @@ static int passed = 0, total = 0;
 static void check(bool ok, const char *name) {
     total++;
     if (ok) passed++;
-    printf("%s  %s\n", ok ? "PASS" : "FAIL", name);
+    printf("%s  %s\n", ok ? "PASA" : "FALLA", name);
 }
 
 static void test_fifo_order(void) {
@@ -36,7 +36,7 @@ static void test_fifo_order(void) {
         if (job != &jobs[i]) ok = false;
     }
     ready_queue_destroy(&queue);
-    check(ok, "Jobs come out in FIFO order");
+    check(ok, "Los jobs salen en orden FIFO");
 }
 
 static void test_close(void) {
@@ -48,7 +48,7 @@ static void test_close(void) {
 
     bool ok = ready_queue_pop(&queue) == NULL && !ready_queue_push(&queue, &job);
     ready_queue_destroy(&queue);
-    check(ok, "After close, pop returns NULL and push fails");
+    check(ok, "Al cerrar, pop devuelve NULL y push falla");
 }
 
 #define NUM_JOBS 10000
@@ -82,13 +82,13 @@ static void test_concurrent(void) {
     for (int i = 0; i < NUM_JOBS; i++)
         if (times_popped[i] != 1) ok = false;
     ready_queue_destroy(&queue);
-    check(ok, "Concurrent push and pop: no job lost or repeated");
+    check(ok, "CPush y pop concurrentes: ningún job se pierde o repite");
 }
 
 int main(void) {
     test_fifo_order();
     test_close();
     test_concurrent();
-    printf("%d of %d tests passed\n", passed, total);
+    printf("%d de %d pruebas pasaron\n", passed, total);
     return passed == total ? 0 : 1;
 }

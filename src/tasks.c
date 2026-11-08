@@ -36,14 +36,14 @@ static bool input_long(task_context_t *context, const array_t *inputs,
                        const char *key, long min, long max, long *result) {
     const char *text = input_get(inputs, key);
     if (text == NULL) {
-        log_line(context, "error: missing input '%s'", key);
+        log_line(context, "error: falta el input '%s'", key);
         return false;
     }
     errno = 0;
     char *end = NULL;
     long value = strtol(text, &end, 10);
     if (errno != 0 || end == text || *end != '\0' || value < min || value > max) {
-        log_line(context, "error: invalid input '%s'", key);
+        log_line(context, "error: input inválido '%s'", key);
         return false;
     }
     *result = value;
@@ -86,7 +86,7 @@ static bool workpath(task_context_t *context, const char *relative,
                      char *path, size_t size) {
     int written = snprintf(path, size, "%s/%s", context->workdir, relative);
     if (written < 0 || (size_t)written >= size) {
-        log_line(context, "error: path too long '%s'", relative);
+        log_line(context, "error: ruta demasiado larga '%s'", relative);
         return false;
     }
     return true;
@@ -99,7 +99,7 @@ static bool load_file(task_context_t *context, const char *path,
     *size = 0;
     FILE *file = fopen(path, "rb");
     if (file == NULL) {
-        log_line(context, "error: cannot open '%s'", path);
+        log_line(context, "error: no se puede abrir '%s'", path);
         return false;
     }
     struct stat info;
@@ -116,7 +116,7 @@ static bool load_file(task_context_t *context, const char *path,
     *size = fread(*data, 1, expected, file);
     fclose(file);
     if (*size != expected) {
-        log_line(context, "error: cannot read '%s'", path);
+        log_line(context, "error: no se puede leer '%s'", path);
         free(*data);
         *data = NULL;
         return false;
@@ -174,7 +174,7 @@ static task_result_t task_histogram(const array_t *inputs, task_context_t *conte
     const char *output_name = input_get(inputs, "output");
     long bins, threads;
     if (file_name == NULL || output_name == NULL) {
-        log_line(context, "error: Histogram@1 requires 'file' and 'output'");
+        log_line(context, "error: Histogram@1 requiere 'file' y 'output'");
         return TASK_FAILED;
     }
     if (!input_long(context, inputs, "bins", 1, 256, &bins) ||
@@ -210,7 +210,7 @@ static task_result_t task_histogram(const array_t *inputs, task_context_t *conte
     if (result == TASK_OK) {
         FILE *output = fopen(output_path, "w");
         if (output == NULL) {
-            log_line(context, "error: cannot create '%s'", output_name);
+            log_line(context, "error: no se puede crear '%s'", output_name);
             result = TASK_FAILED;
         } else {
             fprintf(output, "bin,count\n");
@@ -288,7 +288,7 @@ static task_result_t task_wordcount(const array_t *inputs, task_context_t *conte
     const char *output_name = input_get(inputs, "output");
     long threads, top = 10;
     if (file_name == NULL || output_name == NULL) {
-        log_line(context, "error: WordCount@1 requires 'file' and 'output'");
+        log_line(context, "error: WordCount@1 requiere 'file' y 'output'");
         return TASK_FAILED;
     }
     if (!input_long(context, inputs, "threads", 1, 1024, &threads)) return TASK_FAILED;
@@ -360,7 +360,7 @@ static task_result_t task_wordcount(const array_t *inputs, task_context_t *conte
         qsort(all.items, all.count, sizeof *all.items, compare_words);
         FILE *output = fopen(output_path, "w");
         if (output == NULL) {
-            log_line(context, "error: cannot create '%s'", output_name);
+            log_line(context, "error: no se puede crear '%s'", output_name);
             result = TASK_FAILED;
         } else {
             fprintf(output, "total,%" PRIu64 "\n", total);
@@ -382,6 +382,6 @@ task_result_t task_run(const char *name, const array_t *inputs,
     if (strcmp(name, "Cpu@1") == 0)       return task_cpu(inputs, context);
     if (strcmp(name, "WordCount@1") == 0) return task_wordcount(inputs, context);
     if (strcmp(name, "Histogram@1") == 0) return task_histogram(inputs, context);
-    log_line(context, "error: unknown task '%s'", name);
+    log_line(context, "error: tarea desconocida '%s'", name);
     return TASK_FAILED;
 }

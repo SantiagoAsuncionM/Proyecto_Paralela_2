@@ -37,7 +37,7 @@ static char workdir[] = "/tmp/test_tasks_XXXXXX";
 static void check(int ok, const char *name) {
     total++;
     if (ok) passed++;
-    printf("%s  %s\n", ok ? "PASS" : "FAIL", name);
+    printf("%s  %s\n", ok ? "PASA" : "FALLA", name);
 }
 
 // array_t of par_var_t*, as the parser delivers a step's inputs.
@@ -102,7 +102,7 @@ static void test_wordcount_deterministic(void) {
     array_t inputs_four = make_inputs(four, 4, slots);
     ok = ok && task_run("WordCount@1", &inputs_four, &context) == TASK_OK;
     check(ok && same_file("wc1.txt", "wc4.txt"),
-          "WordCount: same result with 1 and 4 threads");
+          "WordCount: mismo resultado con 1 y 4 hilos");
 }
 
 static void test_histogram_deterministic(void) {
@@ -117,7 +117,7 @@ static void test_histogram_deterministic(void) {
     array_t inputs_four = make_inputs(four, 4, slots);
     ok = ok && task_run("Histogram@1", &inputs_four, &context) == TASK_OK;
     check(ok && same_file("h1.csv", "h4.csv"),
-          "Histogram: same result with 1 and 4 threads");
+          "Histogram: mismo resultado con 1 y 4 hilos");
 }
 
 static void test_cpu_deterministic(void) {
@@ -134,7 +134,7 @@ static void test_cpu_deterministic(void) {
     ok = ok && task_run("Cpu@1", &inputs, &context) == TASK_OK;
     const char *second = vars_get(context.vars, "CPU_RESULT");
     check(ok && first[0] != '\0' && second != NULL && strcmp(first, second) == 0,
-          "Cpu: same seed gives same CPU_RESULT");
+          "Cpu: la misma semilla da el mismo CPU_RESULT");
     vars_free(context.vars);
 }
 
@@ -143,7 +143,7 @@ static void test_invalid_input(void) {
     void *slots[1];
     par_var_t vars[] = { {"seconds", "abc"} };
     array_t inputs = make_inputs(vars, 1, slots);
-    check(task_run("Sleep@1", &inputs, &context) == TASK_FAILED, "Invalid input fails");
+    check(task_run("Sleep@1", &inputs, &context) == TASK_FAILED, "Input inválido falla");
 }
 
 static void test_unknown_task(void) {
@@ -151,7 +151,7 @@ static void test_unknown_task(void) {
     void *slots[1];
     par_var_t vars[] = { {"seconds", "1"} };
     array_t inputs = make_inputs(vars, 1, slots);
-    check(task_run("Foo@1", &inputs, &context) == TASK_FAILED, "Unknown task fails");
+    check(task_run("Foo@1", &inputs, &context) == TASK_FAILED, "Tarea desconocida falla");
 }
 
 static void test_sleep_cancel(void) {
@@ -164,7 +164,7 @@ static void test_sleep_cancel(void) {
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
     task_result_t result = task_run("Sleep@1", &inputs, &context);
-    check(result == TASK_CANCELED && seconds_since(start) < 1.0, "Sleep stops when canceled");
+    check(result == TASK_CANCELED && seconds_since(start) < 1.0, "Sleep se detiene al cancelar");
 }
 
 static void test_sleep_timeout(void) {
@@ -178,7 +178,7 @@ static void test_sleep_timeout(void) {
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
     task_result_t result = task_run("Sleep@1", &inputs, &context);
-    check(result == TASK_TIMEOUT && seconds_since(start) < 2.0, "Sleep stops on timeout");
+    check(result == TASK_TIMEOUT && seconds_since(start) < 2.0, "Sleep se detiene por timeout");
 }
 
 //*** Main  ***//
@@ -198,11 +198,11 @@ int main(void) {
     test_sleep_cancel();
     test_sleep_timeout();
 
-    printf("%d of %d tests passed\n", passed, total);
+    printf("%d de %d pruebas pasaron\n", passed, total);
 
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf %s", workdir);  // clean up
-    if (system(cmd) != 0) fprintf(stderr, "could not remove %s\n", workdir);
+    if (system(cmd) != 0) fprintf(stderr, "no se pudo borrar %s\n", workdir);
 
     return passed == total ? 0 : 1;
 }
