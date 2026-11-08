@@ -17,7 +17,7 @@ HEADERS = $(wildcard include/*.h)
 LIB_SRC = src/net_util.c src/protocol.c src/run_registry.c src/array.c \
 src/parser.c src/parser_helpers.c src/validate_pipeline.c src/graph.c \
 src/run.c src/vars.c src/scheduler.c src/ready_queue.c src/executor.c \
-src/tasks.c src/joblog.c src/pipeline.c
+src/tasks.c src/joblog.c src/pipeline.c src/process.c
 
 TEST_SRC   = $(wildcard tests/test_*.c)
 TEST_BINS  = $(patsubst tests/%.c,build/tests/%,$(TEST_SRC))
