@@ -82,7 +82,7 @@ static void test_concurrent(void) {
     for (int i = 0; i < NUM_JOBS; i++)
         if (times_popped[i] != 1) ok = false;
     ready_queue_destroy(&queue);
-    check(ok, "CPush y pop concurrentes: ningún job se pierde o repite");
+    check(ok, "Push y pop concurrentes: ningún job se pierde o repite");
 }
 
 int main(void) {
