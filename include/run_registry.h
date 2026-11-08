@@ -14,3 +14,9 @@ int run_job_count(int id);
 
 //si el id no existe retorna -1, si el job no exite retorna -2
 int run_logs_follow(int id, const char* job, size_t* positions, char* buf, size_t cap, bool* finished);
+
+//cancela todas las runs
+void run_cancel_all(void);
+
+//true si todas las corridas ya terminaron.
+bool run_all_finished(void);
