@@ -179,5 +179,7 @@ bool graph_check_cycles(dep_graph_t* graph, array_t* errors) {
 
     free(deg);
     free(order);
+    free(path);
+    free(pos);
     return true;
 }
