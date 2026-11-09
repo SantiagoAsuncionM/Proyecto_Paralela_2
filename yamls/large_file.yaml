@@ -1,0 +1,52 @@
+name: analisis-de-corpus
+variables:
+  CORPUS: configurar la ruta del archivo corpus.txt
+  HILOS: 4
+stages:
+  - stage: preparar
+    jobs:
+      - job: descargar
+        steps:
+          - script: cp $(CORPUS) corpus.txt
+          - publish: corpus.txt
+            artifact: corpus
+      - job: calentar
+        steps:
+          - task: Sleep@1
+            inputs:
+              seconds: 2
+
+  - stage: analizar
+    dependsOn: preparar
+    jobs:
+      - job: contar
+        steps:
+          - download: corpus
+            path: entrada
+          - task: WordCount@1
+            inputs:
+              file: entrada/corpus.txt
+              threads: $(HILOS)
+              output: conteo.txt
+          - publish: conteo.txt
+            artifact: conteo
+      - job: histograma
+        steps:
+          - download: corpus
+            path: entrada
+          - task: Histogram@1
+            inputs:
+              file: entrada/corpus.txt
+              bins: 16
+              threads: $(HILOS)
+              output: histograma.csv
+          - publish: histograma.csv
+            artifact: histograma
+      - job: reporte
+        dependsOn: [contar, histograma]
+        steps:
+          - download: conteo
+            path: datos
+          - download: histograma
+            path: datos
+          - script: cat datos/conteo.txt datos/histograma.csv > reporte.txt
