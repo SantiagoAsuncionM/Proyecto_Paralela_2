@@ -8,4 +8,4 @@ with open("corpus_300mb.txt", "w") as f:
     while written < target:
         line = " ".join(random.choices(vocab, weights, k=12)) + "\n"
         f.write(line)
-        written += len(line)
+
