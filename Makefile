@@ -54,7 +54,10 @@ DSIN_PROTECCION: clean
 install:
 	sudo apt install -y libyaml-dev
 
+run-script:
+	python3 scripts/gen_file.py
+
 clean:
 	rm -rf bin build/tests
 
-.PHONY: all test asan install clean
+.PHONY: all test asan install clean run-script
