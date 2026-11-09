@@ -1,0 +1,18 @@
+name: medicion-wordcount
+variables:
+  CORPUS: configurar la ruta del archivo corpus.txt
+  HILOS: 4
+stages:
+  - stage: analizar
+    jobs:
+      - job: contar
+        steps:
+          - script: cp $(CORPUS) corpus.txt
+          - task: WordCount@1
+            inputs:
+              file: corpus.txt
+              threads: $(HILOS)
+              output: conteo.txt
+              top: 10
+          - publish: conteo.txt
+            artifact: conteo

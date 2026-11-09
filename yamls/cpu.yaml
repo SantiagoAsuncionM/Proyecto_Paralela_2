@@ -1,0 +1,27 @@
+name: carga-cpu
+
+stages:
+  - stage: calculo
+    jobs:
+      - job: semilla_1
+        steps:
+          - task: Cpu@1
+            inputs:
+              iterations: 500000000
+              seed: 1
+
+      - job: semilla_2
+        steps:
+          - task: Cpu@1
+            inputs:
+              iterations: 500000000
+              seed: 2
+
+  - stage: verificacion
+    jobs:
+      - job: repetir_semilla_1
+        steps:
+          - task: Cpu@1
+            inputs:
+              iterations: 500000000
+              seed: 1

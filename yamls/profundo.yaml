@@ -1,0 +1,34 @@
+name: pipeline-profundo
+
+stages:
+  - stage: cadena
+    jobs:
+      - job: t1
+        steps:
+          - task: Sleep@1
+            inputs: { seconds: 3 }
+      - job: t2
+        dependsOn: t1
+        steps:
+          - task: Sleep@1
+            inputs: { seconds: 3 }
+      - job: t3
+        dependsOn: t2
+        steps:
+          - task: Sleep@1
+            inputs: { seconds: 3 }
+      - job: t4
+        dependsOn: t3
+        steps:
+          - task: Sleep@1
+            inputs: { seconds: 3 }
+      - job: t5
+        dependsOn: t4
+        steps:
+          - task: Sleep@1
+            inputs: { seconds: 3 }
+      - job: t6
+        dependsOn: t5
+        steps:
+          - task: Sleep@1
+            inputs: { seconds: 3 }
