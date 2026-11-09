@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include "tasks.h"
 #include "vars.h"
-// #include "process.h"  // TODO: process
+#include "process.h"
 
 
 //*** Helpers  ***//
@@ -62,33 +62,33 @@ static array_t *initial_vars(const run_t *run, const job_exec_t *job) {
 //*** Artifacts  ***//
 
 static bool artifact_publish(run_t *run, const char *workdir, const char *path,
-                             const char *name) {
+                             const char *name, job_log_t *log) {
     char folder[PATH_MAX], source[PATH_MAX];
     snprintf(folder, sizeof folder, "%s/artifacts", run->workdir);
     make_dirs(folder);
     snprintf(folder, sizeof folder, "%s/artifacts/%s", run->workdir, name);
     if (mkdir(folder, 0755) != 0) {
-        // TODO: joblog_append(log, "error: artifact already exists or cannot be created");
+        joblog_append(log, "error: el artefacto ya existe o no se puede crear");
         return false;
     }
     snprintf(source, sizeof source, "%s/%s", workdir, path);
-    // TODO: copy with process_run({ "cp", "-r", source, folder, NULL })
-    return false;
+    char *argv[] = { "cp", "-r", source, folder, NULL };
+    return process_run(argv);
 }
 
 static bool artifact_download(run_t *run, const char *workdir, const char *name,
-                              const char *path) {
+                              const char *path, job_log_t *log) {
     char source[PATH_MAX], target[PATH_MAX];
     snprintf(source, sizeof source, "%s/artifacts/%s/.", run->workdir, name);
     snprintf(target, sizeof target, "%s/%s", workdir, path);
     struct stat info;
     if (stat(source, &info) != 0) {
-        // TODO: joblog_append(log, "error: artifact does not exist");
+        joblog_append(log, "error: el artefacto no existe");
         return false;
     }
     make_dirs(target);
-    // TODO: copy with process_run({ "cp", "-r", source, target, NULL })
-    return false;
+    char *argv[] = { "cp", "-r", source, target, NULL };
+    return process_run(argv);
 }
 
 //*** Steps  ***//
@@ -98,7 +98,7 @@ static task_result_t run_step(run_t *run, const step_t *step,
     task_result_t result = TASK_FAILED;
     if (step->type == STEP_SCRIPT) {
         char *script = vars_substitute(context->vars, step->script);
-        // TODO: if (script != NULL) result = process_run_script(script, context);
+        if (script != NULL) result = process_run_script(script, context);
         free(script);
     } else if (step->type == STEP_TASK) {
         array_t *inputs = array_init(8);  // inputs with $(VAR) replaced
@@ -112,10 +112,10 @@ static task_result_t run_step(run_t *run, const step_t *step,
         vars_free(inputs);
     } else if (step->type == STEP_PUBLISH) {
         result = artifact_publish(run, context->workdir, step->publish_path,
-                                  step->artifact) ? TASK_OK : TASK_FAILED;
+                                  step->artifact, context->log) ? TASK_OK : TASK_FAILED;
     } else if (step->type == STEP_DOWNLOAD) {
         result = artifact_download(run, context->workdir, step->artifact,
-                                   step->download_path) ? TASK_OK : TASK_FAILED;
+                                   step->download_path, context->log) ? TASK_OK : TASK_FAILED;
     }
     return result;
 }
@@ -265,7 +265,7 @@ void executor_run_job(scheduler_t *scheduler, void *job_pointer) {
         .workdir = workdir,
         .cancel = &run->cancel_requested,
         .vars = job->node->out_vars,
-        .log = &job->log,  // TODO: joblog
+        .log = &job->log,
     };
     if (job->node->def->timeout_in_seconds > 0) {
         now(&context.deadline);
